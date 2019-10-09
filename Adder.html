@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+
+	<head>
+		<title>Adding two numbers</title>
+	
+<!-- Start: injected by AdGuard -->
+<script src="//local.adguard.com/adguard-ajax-api/injections/content-script.js?ts=1570601564.114709&amp;sb=0&amp;domain=moodle.insa-lyon.fr&amp;mask=103" type="text/javascript" nonce="DD08CF4A321A40E0A9ABFD771B9D24A8"></script>
+<script src="//local.adguard.com/adguard-ajax-api/injections/userscripts/Adguard Assistant?ts=1570603122.633994" type="text/javascript" nonce="DD08CF4A321A40E0A9ABFD771B9D24A8"></script>
+<script src="//local.adguard.com/adguard-ajax-api/injections/userscripts/Adguard Popup Blocker?ts=1570603122.633994" type="text/javascript" nonce="DD08CF4A321A40E0A9ABFD771B9D24A8"></script>
+<!-- End: injected by AdGuard -->
+</head>
+
+	<body>
+		Enter First Number: <input id="first">
+		Enter Second Number: <input id="second">
+		<button onclick="add()">Add</button>
+		Result is: <input id="answer">
+
+		<script>
+			function add(){
+			var a,b,c;
+			a=Number(document.getElementById("first").value);
+			b=Number(document.getElementById("second").value);
+			c= a + b;
+			document.getElementById("answer").value= c;
+			}
+		</script>
+
+	</body>
+
+</html>
