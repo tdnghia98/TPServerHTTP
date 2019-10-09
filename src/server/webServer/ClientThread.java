@@ -4,13 +4,15 @@ import java.io.*;
 import java.net.Socket;
 import java.util.StringTokenizer;
 
-public class ClientThread extends Thread{
+public class ClientThread extends Thread {
     private Socket socket;
     private BufferedReader socIn;
     private DataOutputStream socOut;
     private boolean exit;
     private String requestPath;
     private String method;
+    private Integer contentLength;
+    private String requestBody;
 
     public ClientThread(Socket s) throws IOException {
         this.socket = s;
@@ -30,10 +32,6 @@ public class ClientThread extends Thread{
                     System.err.println("null message received. Thread is killed");
                 }
                 if (request != null) {
-                    if (request.equals("")) {
-                        System.out.println("End of request");
-                        endThread();
-                    }
                     if (method == null) {
                         // Get the method if method is not defined. This is only executed at the creation of the thread
                         // (avoid parsing the wrong line)
@@ -42,10 +40,30 @@ public class ClientThread extends Thread{
                         requestPath = parse.nextToken().toLowerCase();
                         System.out.println("Method: " + method);
                         System.out.println("requestPath: " + requestPath);
-                        if (method.equals("GET")) {
-                            //sendTestMessage();
-                            responseGetRequest("test.txt");
+                    }
+
+                    if (request.startsWith("Content-Length")) {
+                        contentLength = Integer.parseInt(request.substring("Content-Length: ".length()));
+                        System.out.println("Body detected. Content Length = " + contentLength);
+                    }
+
+                    if (request.equals("")) {
+                        System.out.println("End of header");
+                        if (contentLength == null) {
+                            respondToRequest();
+                        } else {
+                            // If the content-length is not null -> Fetch the body
+                            StringBuilder body = new StringBuilder();
+                            int b = 0;
+                            for (int i = 0; i < contentLength; i++) {
+                                b = socIn.read();
+                                body.append((char) b);
+                            }
+                            requestBody = body.toString();
+                            System.out.println("Body parsed: " + body);
+                            respondToRequest();
                         }
+                        endThread();
                     }
                 }
             } catch (IOException e) {
@@ -59,8 +77,36 @@ public class ClientThread extends Thread{
         exit = true;
     }
 
+    private void respondToRequest() throws IOException {
+        switch (method) {
+            case "GET":
+                responseGetRequest(requestPath);
+                break;
+            case "POST":
+                responsePostRequest();
+                break;
+            case "PUT":
+                break;
+            case "HEAD":
+                break;
+            case "DELETE":
+                break;
+            default:
+                System.err.println("Method" + method + "not recognized.");
+                break;
+        }
+    }
 
-
+    public void responsePostRequest() throws IOException {
+        sendMessage("HTTP/1.0 200 OK");
+        sendMessage("Content-Type: text/html");
+        sendMessage("Server: Bot");
+        // End of the headers
+        sendMessage("");
+        // HTML Page
+        sendMessage("<H1>This is a post Response</H1>");
+        sendMessage("<p>The message body that I received: " + requestBody + "</p>");
+    }
 
     public void sendMessage(String message) throws IOException {
         socOut.writeBytes(message);
@@ -77,28 +123,33 @@ public class ClientThread extends Thread{
 //        socOut.flush();
 //    }
 
-    public void responseGetRequest (String fileName) {
+    public void responseGetRequest(String requestContent) {
         try {
-            int NBBYTES = 256;
-            FileInputStream inFile = new FileInputStream("C:/Users/Thuy Vu/Desktop/TPServerHTTP/src/server/library/" + fileName);
-            byte[] fileInBytes = new byte[NBBYTES];
+            File file = new File ("./src/server/library" + requestContent);
+            FileInputStream inFile = new FileInputStream(file);
+            long length = file.length();
+            byte[] fileInBytes = new byte[(int) length];
             inFile.read(fileInBytes);
+
+            // Response code
             socOut.writeBytes("HTTP/1/0 200 OK\r\n");
 
-            if (fileName.endsWith(".jpg"))
+            // Content type
+            if (requestContent.endsWith(".jpg"))
                 socOut.writeBytes("Content-Type: image/jpeg\r\n");
-            if (fileName.endsWith(".gif"))
+            if (requestContent.endsWith(".gif"))
                 socOut.writeBytes("Content-Type: image/gif\r\n");
-            if (fileName.endsWith(".txt"))
-                socOut.writeBytes("Content-Type: text/txt\r\n");
+            if (requestContent.endsWith(".txt"))
+                socOut.writeBytes("Content-Type: text/html\r\n");
 
-            socOut.writeBytes("Content-Length: " + NBBYTES + "\r\n");
+            // Content length
+            socOut.writeBytes("Content-Length: " + length + "\r\n");
             socOut.writeBytes("\r\n");
 
-            InputStream is = socket.getInputStream();
-            int bytesRead = is.read(fileInBytes, 0, fileInBytes.length);
-            socOut.write(fileInBytes, 0, bytesRead);
+            // Body
+            socOut.write(fileInBytes, 0, fileInBytes.length);
             socket.close();
+            System.out.println("[DEBUG] Socket closed");
         } catch (FileNotFoundException ex) {
             ex.printStackTrace();
         } catch (IOException ex) {
