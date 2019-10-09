@@ -1,3 +1,4 @@
+package client;
 
 import javax.swing.*;
 import java.awt.*;
@@ -39,7 +40,8 @@ public class WebPingGUI extends JFrame implements ActionListener {
     public WebPingGUI(String server, int port) throws IOException {
         // Setup UI
         // UI Components
-        serverResponseJTextArea = new JTextArea("Hi");
+        serverResponseJTextArea = new JTextArea();
+        serverResponseJLabel = new JLabel("Server Response");
         final String[] requestTypes = {"GET", "HEAD", "POST", "PUT", "DELETE"};
         requestTypeJComboBox = new JComboBox<>(requestTypes);
         requestTypeJLabel = new JLabel("Request Type");
@@ -73,6 +75,7 @@ public class WebPingGUI extends JFrame implements ActionListener {
         userInputPane.add(sendBtn);
 
         serverResponsePane.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.gray), "Server Response"));
+        serverResponsePane.add(serverResponseJLabel);
         serverResponsePane.add(serverResponseJTextArea);
 
         add(containerPane);
