@@ -51,7 +51,6 @@ public class WebServer {
 
     public void analyzeClientRequest(String request) {
         String[] splitRequest = request.split("/");
-
     }
 
     public static void main(String args[]) {
