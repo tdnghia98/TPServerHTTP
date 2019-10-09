@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="WebServer" type="Application" factoryName="Application">
-    <option name="MAIN_CLASS_NAME" value="WebServer" />
+    <option name="MAIN_CLASS_NAME" value="server.webServer.WebServer" />
     <module name="TPServerHTTP" />
     <method v="2">
       <option name="Make" enabled="true" />
