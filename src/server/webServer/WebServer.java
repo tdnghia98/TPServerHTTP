@@ -1,26 +1,11 @@
-///A Simple Web Server (WebServer.java)
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-/**
- * Example program from Chapter 1 Programming Spiders, Bots and Aggregators in
- * Java Copyright 2001 by Jeff Heaton
- *
- * WebServer is a very simple web-server. Any request is responded with a very
- * simple web-page.
- *
- * @author Jeff Heaton
- * @version 1.0
- */
 public class WebServer {
 
-    /**
-     * WebServer constructor.
-     */
     protected void start() {
         ServerSocket s;
 
@@ -59,12 +44,10 @@ public class WebServer {
         }
     }
 
-    /**
-     * Start the application.
-     *
-     * @param args
-     *            Command line parameters are not used.
-     */
+    public static void get (String fileName) {
+
+    }
+
     public static void main(String args[]) {
         WebServer ws = new WebServer();
         ws.start();
