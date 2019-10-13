@@ -2,6 +2,7 @@ package server.webServer;
 
 import java.io.*;
 import java.net.Socket;
+import java.sql.SQLOutput;
 import java.util.StringTokenizer;
 
 public class ClientThread extends Thread {
@@ -13,6 +14,10 @@ public class ClientThread extends Thread {
     private String method;
     private Integer contentLength;
     private String requestBody;
+
+    private final String WEBROOT = "./src/server/library";
+    private final String FILE_NOT_FOUND = "404.html";
+    private final String HOMEPAGE = "index.html";
 
     public ClientThread(Socket s) throws IOException {
         this.socket = s;
@@ -124,46 +129,115 @@ public class ClientThread extends Thread {
 //        socOut.flush();
 //    }
 
-    public void responseGetRequest(String requestContent) {
+
+    private byte[] readFileInByte(File file, int fileLength) throws IOException {
+        FileInputStream fileIn = null;
+        byte[] fileInByte = new byte[fileLength];
+
+        try {
+            fileIn = new FileInputStream(file);
+            fileIn.read(fileInByte);
+        } finally {
+            if (fileIn != null) {
+                fileIn.close();
+            }
+        }
+        return fileInByte;
+    }
+
+    private String getContentType(String requestContent) {
+        if (requestContent.endsWith(".jpg"))
+            return "image/jpeg";
+        if (requestContent.endsWith(".gif"))
+            return "image/gif";
+        if (requestContent.endsWith(".txt") || requestContent.endsWith(".html"))
+            return "text/html";
+        return null;
+    }
+
+    public void sendFileNotFoundMessage() throws IOException {
+        System.out.println("Sending 404 page");
+        File file = new File(WEBROOT, FILE_NOT_FOUND);
+        int fileLength = (int) file.length();
+        String content = "text/html";
+        byte[] fileInByte = readFileInByte(file, fileLength);
+
+        sendMessage("HTTP/1.1 404 File Not Found \r\n");
+        sendMessage("Content-type: " + content + "\r\n");
+        sendMessage("Content-length: " + fileLength + "\r\n");
+        sendMessage("\r\n"); // blank line between headers and content, very important !
+        socOut.flush(); // flush character output stream buffer
+
+        socOut.write(fileInByte, 0, fileLength);
+
+    }
+
+    private byte[] getFileInByteFromRequestContent(String requestContent) {
+
+    }
+
+    public void responseGetRequest(String requestContent) throws IOException {
         try {
             File file;
-            try {
-                if (requestContent.equals("/")) {
-                    file = new File ("./src/server/library/index.html");
-                } else {
-                    file = new File ("./src/server/library" + requestContent);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                return;
+            int fileLength;
+            String contentType = getContentType(requestContent);
+            if (requestContent.equals("/")) {
+                file = new File(WEBROOT, HOMEPAGE);
+            } else {
+                file = new File(WEBROOT, requestContent);
             }
-
-            FileInputStream inFile = new FileInputStream(file);
-            long length = file.length();
-            byte[] fileInBytes = new byte[(int) length];
-            inFile.read(fileInBytes);
+            fileLength = (int) file.length();
+            byte[] fileInBytes = readFileInByte(file, fileLength);
 
             // Response code
-            socOut.writeBytes("HTTP/1/0 200 OK\r\n");
+            sendMessage("HTTP/1.1 200 OK\r\n");
 
             // Content type
-            if (requestContent.endsWith(".jpg"))
-                socOut.writeBytes("Content-Type: image/jpeg\r\n");
-            if (requestContent.endsWith(".gif"))
-                socOut.writeBytes("Content-Type: image/gif\r\n");
-            if (requestContent.endsWith(".txt"))
-                socOut.writeBytes("Content-Type: text/html\r\n");
-
+            sendMessage("Content-Type: " + contentType + "\r\n");
             // Content length
-            socOut.writeBytes("Content-Length: " + length + "\r\n");
-            socOut.writeBytes("\r\n");
+            sendMessage("Content-Length: " + fileLength + "\r\n");
+            sendMessage("\r\n");
 
             // Body
             socOut.write(fileInBytes, 0, fileInBytes.length);
-            socket.close();
-            System.out.println("[DEBUG] Socket closed");
         } catch (FileNotFoundException ex) {
+            try {
+                sendFileNotFoundMessage();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (IOException ex) {
             ex.printStackTrace();
+        }
+    }
+
+    public void responseHeadRequest(String requestContent) {
+
+        try {
+            File file;
+            int fileLength;
+            String contentType = getContentType(requestContent);
+            if (requestContent.equals("/")) {
+                file = new File(WEBROOT, HOMEPAGE);
+            } else {
+                file = new File(WEBROOT, requestContent);
+            }
+            fileLength = (int) file.length();
+
+            // Response code
+            sendMessage("HTTP/1.1 200 OK\r\n");
+
+            // Content type
+            sendMessage("Content-Type: " + contentType + "\r\n");
+            // Content length
+            sendMessage("Content-Length: " + fileLength + "\r\n");
+            sendMessage("\r\n");
+        } catch (FileNotFoundException ex) {
+            try {
+                sendFileNotFoundMessage();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         } catch (IOException ex) {
             ex.printStackTrace();
         }
