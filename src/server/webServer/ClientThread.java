@@ -27,7 +27,7 @@ public class ClientThread extends Thread {
         Forbidden("403 Forbidden"),
         Unauthorized("401 Unauthorized"),
         NotFound("404 Not Found"),
-        InternalServerError("500 Internal Sever Error")
+        InternalServerError("500 Internal Sever Error");
 
         private String desc;
         RESPONSE_CODE(String desc) {
@@ -217,7 +217,7 @@ public class ClientThread extends Thread {
             sendMessage("Content-Type: " + contentType);
             // Content length
             sendMessage("Content-Length: " + fileLength);
-            sendMessage("\r\n");
+            sendMessage();  // blank line between headers and content, very important
 
             // Body
             socOut.write(fileInBytes, 0, fileInBytes.length);
