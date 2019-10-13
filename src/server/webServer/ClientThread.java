@@ -18,7 +18,26 @@ public class ClientThread extends Thread {
     private final String WEBROOT = "./src/server/library";
     private final String FILE_NOT_FOUND = "404.html";
     private final String HOMEPAGE = "index.html";
+    enum RESPONSE_CODE {
+        OK("200 OK"),
+        Created("201 Created"),
+        NoContent("204 No Content"),
+        NotModified("304 Not Modified"),
+        BadRequest("400 Bad Request"),
+        Forbidden("403 Forbidden"),
+        Unauthorized("401 Unauthorized"),
+        NotFound("404 Not Found"),
+        InternalServerError("500 Internal Sever Error")
 
+        private String desc;
+        RESPONSE_CODE(String desc) {
+            this.desc = desc;
+        }
+
+        public String toString() {
+            return desc;
+        }
+    }
     public ClientThread(Socket s) throws IOException {
         this.socket = s;
         exit = false;
@@ -104,11 +123,11 @@ public class ClientThread extends Thread {
     }
 
     public void responsePostRequest() throws IOException {
-        sendMessage("HTTP/1.0 200 OK");
+        sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.toString());
         sendMessage("Content-Type: text/html");
         sendMessage("Server: Bot");
         // End of the headers
-        sendMessage("");
+        sendMessage();
         // HTML Page
         sendMessage("<H1>This is a post Response</H1>");
         sendMessage("<p>The message body that I received: " + requestBody + "</p>");
@@ -116,6 +135,11 @@ public class ClientThread extends Thread {
 
     public void sendMessage(String message) throws IOException {
         socOut.writeBytes(message);
+        socOut.writeBytes("\r\n");
+    }
+
+    public void sendMessage() throws IOException {
+        socOut.writeBytes("\r\n");
     }
 
 //    public void sendTestMessage() {
@@ -162,19 +186,16 @@ public class ClientThread extends Thread {
         String content = "text/html";
         byte[] fileInByte = readFileInByte(file, fileLength);
 
-        sendMessage("HTTP/1.1 404 File Not Found \r\n");
-        sendMessage("Content-type: " + content + "\r\n");
-        sendMessage("Content-length: " + fileLength + "\r\n");
-        sendMessage("\r\n"); // blank line between headers and content, very important !
+        sendMessage("HTTP/1.1");
+        sendMessage("Content-type: " + content);
+        sendMessage("Content-length: " + fileLength);
+        sendMessage(); // blank line between headers and content, very important !
         socOut.flush(); // flush character output stream buffer
 
         socOut.write(fileInByte, 0, fileLength);
 
     }
 
-    private byte[] getFileInByteFromRequestContent(String requestContent) {
-
-    }
 
     public void responseGetRequest(String requestContent) throws IOException {
         try {
@@ -190,12 +211,12 @@ public class ClientThread extends Thread {
             byte[] fileInBytes = readFileInByte(file, fileLength);
 
             // Response code
-            sendMessage("HTTP/1.1 200 OK\r\n");
+            sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.toString());
 
             // Content type
-            sendMessage("Content-Type: " + contentType + "\r\n");
+            sendMessage("Content-Type: " + contentType);
             // Content length
-            sendMessage("Content-Length: " + fileLength + "\r\n");
+            sendMessage("Content-Length: " + fileLength);
             sendMessage("\r\n");
 
             // Body
@@ -225,13 +246,13 @@ public class ClientThread extends Thread {
             fileLength = (int) file.length();
 
             // Response code
-            sendMessage("HTTP/1.1 200 OK\r\n");
+            sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.toString());
 
             // Content type
-            sendMessage("Content-Type: " + contentType + "\r\n");
+            sendMessage("Content-Type: " + contentType);
             // Content length
-            sendMessage("Content-Length: " + fileLength + "\r\n");
-            sendMessage("\r\n");
+            sendMessage("Content-Length: " + fileLength);
+            sendMessage();
         } catch (FileNotFoundException ex) {
             try {
                 sendFileNotFoundMessage();
