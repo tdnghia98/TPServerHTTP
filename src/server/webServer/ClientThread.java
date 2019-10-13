@@ -73,6 +73,7 @@ public class ClientThread extends Thread {
     }
 
     private void endThread() throws IOException {
+        System.err.println("Thread ended");
         socket.close();
         exit = true;
     }
@@ -125,7 +126,18 @@ public class ClientThread extends Thread {
 
     public void responseGetRequest(String requestContent) {
         try {
-            File file = new File ("./src/server/library" + requestContent);
+            File file;
+            try {
+                if (requestContent.equals("/")) {
+                    file = new File ("./src/server/library/index.html");
+                } else {
+                    file = new File ("./src/server/library" + requestContent);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                return;
+            }
+
             FileInputStream inFile = new FileInputStream(file);
             long length = file.length();
             byte[] fileInBytes = new byte[(int) length];
