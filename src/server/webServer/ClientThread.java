@@ -22,31 +22,35 @@ public class ClientThread extends Thread {
     private String requestBody;
 
     private final String WEBROOT = "./src/server/library";
-    private final String FILE_NOT_FOUND = "404.html";
     private final String HOMEPAGE = "index.html";
 
     private static Logger LOGGER = Logger.getLogger(ClientThread.class.getName());
 
     enum RESPONSE_CODE {
-        OK("200 OK"),
-        Created("201 Created"),
-        NoContent("204 No Content"),
-        NotModified("304 Not Modified"),
-        BadRequest("400 Bad Request"),
-        Forbidden("403 Forbidden"),
-        Unauthorized("401 Unauthorized"),
-        NotFound("404 Not Found"),
-        InternalServerError("500 Internal Sever Error");
+        OK("200 OK",""),
+        Created("201 Created", ""),
+        NoContent("204 No Content", ""),
+        NotModified("304 Not Modified", ""),
+        BadRequest("400 Bad Request", "400.html"),
+        Forbidden("403 Forbidden", "403.html"),
+        Unauthorized("401 Unauthorized", "401"),
+        NotFound("404 Not Found","404.html"),
+        InternalServerError("500 Internal Sever Error", "500.html");
 
         private String desc;
 
         RESPONSE_CODE(String desc) {
+        private String path;
+        RESPONSE_CODE(String desc, String path) {
             this.desc = desc;
+            this.path = path;
         }
 
-        public String toString() {
+        public String getMes() {
             return desc;
         }
+
+        public String getPath() {return path;}
     }
 
     public ClientThread(Socket s) throws IOException {
@@ -204,9 +208,27 @@ public class ClientThread extends Thread {
                 break;
             default:
                 LOGGER.warning("Method" + method + "not recognized.");
+                sendMessage("HTTP/1.1 " + RESPONSE_CODE.InternalServerError.getMes());
+                sendErrorMes(RESPONSE_CODE.InternalServerError);
                 break;
+
         }
     }
+
+        public void sendErrorMes(RESPONSE_CODE res) throws IOException {
+            File file = new File(WEBROOT, res.getPath());
+            int fileLength = (int) file.length();
+            String content = "text/html";
+            byte[] fileInByte = readFileInByte(file, fileLength);
+
+            sendMessage("HTTP/1.1");
+            sendMessage("Content-type: " + content);
+            sendMessage("Content-length: " + fileLength);
+            sendMessage(); // blank line between headers and content, very important !
+            socOut.flush(); // flush character output stream buffer
+
+            socOut.write(fileInByte, 0, fileLength);
+        }
 
     public void responsePostRequest() throws IOException {
         LOGGER.info("POST Request");
@@ -320,13 +342,8 @@ public class ClientThread extends Thread {
             // Body
             socOut.write(fileInBytes, 0, fileInBytes.length);
         } catch (FileNotFoundException ex) {
-            try {
-                sendFileNotFoundMessage();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (IOException ex) {
             ex.printStackTrace();
+            errorCodeHandler(ex);
         }
     }
 
@@ -351,13 +368,23 @@ public class ClientThread extends Thread {
             sendMessage("Content-Length: " + fileLength);
             sendMessage();
         } catch (FileNotFoundException ex) {
-            try {
-                sendFileNotFoundMessage();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (IOException ex) {
-            ex.printStackTrace();
+            errorCodeHandler(ex);
         }
+    }
+
+    private void errorCodeHandler (Exception ex) throws IOException {
+        String mes = ex.getMessage();
+        if (mes.matches("(.*)Access is denied(.*)")) {
+            sendMessage("HTTP/1.1 " + RESPONSE_CODE.Forbidden.getMes());
+            sendErrorMes(RESPONSE_CODE.Forbidden);
+            return;
+        }
+        if (mes.matches("(.*)The system cannot find the file specified(.*)")) {
+            sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotFound.getMes());
+            sendErrorMes(RESPONSE_CODE.NotFound);
+            return;
+        }
+        sendMessage("HTTP/1.1 " + RESPONSE_CODE.InternalServerError.getMes());
+        sendErrorMes(RESPONSE_CODE.InternalServerError);
     }
 }
