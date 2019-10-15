@@ -223,6 +223,7 @@ public class ClientThread extends Thread {
             socOut.write(fileInBytes, 0, fileInBytes.length);
         } catch (FileNotFoundException ex) {
             try {
+                sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotFound.toString());
                 sendFileNotFoundMessage();
             } catch (IOException e) {
                 e.printStackTrace();
