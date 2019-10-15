@@ -16,27 +16,30 @@ public class ClientThread extends Thread {
     private String requestBody;
 
     private final String WEBROOT = "./src/server/library";
-    private final String FILE_NOT_FOUND = "404.html";
     private final String HOMEPAGE = "index.html";
     enum RESPONSE_CODE {
-        OK("200 OK"),
-        Created("201 Created"),
-        NoContent("204 No Content"),
-        NotModified("304 Not Modified"),
-        BadRequest("400 Bad Request"),
-        Forbidden("403 Forbidden"),
-        Unauthorized("401 Unauthorized"),
-        NotFound("404 Not Found"),
-        InternalServerError("500 Internal Sever Error");
+        OK("200 OK",""),
+        Created("201 Created", ""),
+        NoContent("204 No Content", ""),
+        NotModified("304 Not Modified", ""),
+        BadRequest("400 Bad Request", "400.html"),
+        Forbidden("403 Forbidden", "403.html"),
+        Unauthorized("401 Unauthorized", "401"),
+        NotFound("404 Not Found","404.html"),
+        InternalServerError("500 Internal Sever Error", "500.html");
 
         private String desc;
-        RESPONSE_CODE(String desc) {
+        private String path;
+        RESPONSE_CODE(String desc, String path) {
             this.desc = desc;
+            this.path = path;
         }
 
-        public String toString() {
+        public String getMes() {
             return desc;
         }
+
+        public String getPath() {return path;}
     }
     public ClientThread(Socket s) throws IOException {
         this.socket = s;
@@ -118,6 +121,8 @@ public class ClientThread extends Thread {
                 break;
             default:
                 System.err.println("Method" + method + "not recognized.");
+                sendMessage("HTTP/1.1 " + RESPONSE_CODE.InternalServerError.getMes());
+                sendErrorMes(RESPONSE_CODE.InternalServerError);
                 break;
         }
     }
@@ -141,18 +146,6 @@ public class ClientThread extends Thread {
     public void sendMessage() throws IOException {
         socOut.writeBytes("\r\n");
     }
-
-//    public void sendTestMessage() {
-//        socOut.println("HTTP/1.0 200 OK");
-//        socOut.println("Content-Type: text/html");
-//        socOut.println("Server: Bot");
-//        // this blank line signals the end of the headers
-//        socOut.println("");
-//        // Send the HTML page
-//        socOut.println("<H1>Welcome to the Ultra Mini-WebServer</H1>");
-//        socOut.flush();
-//    }
-
 
     private byte[] readFileInByte(File file, int fileLength) throws IOException {
         FileInputStream fileIn = null;
@@ -179,9 +172,8 @@ public class ClientThread extends Thread {
         return null;
     }
 
-    public void sendFileNotFoundMessage() throws IOException {
-        System.out.println("Sending 404 page");
-        File file = new File(WEBROOT, FILE_NOT_FOUND);
+    public void sendErrorMes(RESPONSE_CODE res) throws IOException {
+        File file = new File(WEBROOT, res.getPath());
         int fileLength = (int) file.length();
         String content = "text/html";
         byte[] fileInByte = readFileInByte(file, fileLength);
@@ -193,7 +185,6 @@ public class ClientThread extends Thread {
         socOut.flush(); // flush character output stream buffer
 
         socOut.write(fileInByte, 0, fileLength);
-
     }
 
 
@@ -223,8 +214,7 @@ public class ClientThread extends Thread {
             socOut.write(fileInBytes, 0, fileInBytes.length);
         } catch (FileNotFoundException ex) {
             try {
-                sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotFound.toString());
-                sendFileNotFoundMessage();
+                errorCodeHandler(ex);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -256,12 +246,28 @@ public class ClientThread extends Thread {
             sendMessage();
         } catch (FileNotFoundException ex) {
             try {
-                sendFileNotFoundMessage();
+                errorCodeHandler(ex);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    private void errorCodeHandler (Exception ex) throws IOException {
+        String mes = ex.getMessage();
+        if (mes.matches("(.*)Access is denied(.*)")) {
+            sendMessage("HTTP/1.1 " + RESPONSE_CODE.Forbidden.getMes());
+            sendErrorMes(RESPONSE_CODE.Forbidden);
+            return;
+        }
+        if (mes.matches("(.*)The system cannot find the file specified(.*)")) {
+            sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotFound.getMes());
+            sendErrorMes(RESPONSE_CODE.NotFound);
+            return;
+        }
+        sendMessage("HTTP/1.1 " + RESPONSE_CODE.InternalServerError.getMes());
+        sendErrorMes(RESPONSE_CODE.InternalServerError);
     }
 }
