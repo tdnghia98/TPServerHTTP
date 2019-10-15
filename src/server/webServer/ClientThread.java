@@ -8,6 +8,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.sql.SQLOutput;
 import java.util.StringTokenizer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ClientThread extends Thread {
     private Socket socket;
@@ -22,6 +24,8 @@ public class ClientThread extends Thread {
     private final String WEBROOT = "./src/server/library";
     private final String FILE_NOT_FOUND = "404.html";
     private final String HOMEPAGE = "index.html";
+
+    private static Logger LOGGER = Logger.getLogger(ClientThread.class.getName());
 
     enum RESPONSE_CODE {
         OK("200 OK"),
@@ -50,6 +54,9 @@ public class ClientThread extends Thread {
         exit = false;
         socIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         socOut = new DataOutputStream(socket.getOutputStream());
+
+        // Logging
+        LOGGER.setLevel(Level.ALL);
     }
 
     // Thread
@@ -57,10 +64,10 @@ public class ClientThread extends Thread {
         while (!exit) {
             try {
                 String request = socIn.readLine();
-                System.out.println("Client Thread received request: " + request);
+                LOGGER.finest("Client Thread received request: " + request);
                 if (request == null) {
                     endThread();
-                    System.err.println("null message received. Thread is killed");
+                    LOGGER.warning("null message received. Thread is killed");
                 }
                 if (request != null) {
                     if (method == null) {
@@ -69,17 +76,17 @@ public class ClientThread extends Thread {
                         StringTokenizer parse = new StringTokenizer(request);
                         method = parse.nextToken().toUpperCase();
                         requestPath = parse.nextToken().toLowerCase();
-                        System.out.println("Method: " + method);
-                        System.out.println("requestPath: " + requestPath);
+                        LOGGER.info("Method: " + method);
+                        LOGGER.info("requestPath: " + requestPath);
                     }
 
                     if (request.startsWith("Content-Length")) {
                         contentLength = Integer.parseInt(request.substring("Content-Length: ".length()));
-                        System.out.println("Body detected. Content Length = " + contentLength);
+                        LOGGER.info("Body detected. Content Length = " + contentLength);
                     }
 
                     if (request.equals("")) {
-                        System.out.println("End of header");
+                        LOGGER.info("End of header");
                         if (contentLength == null) {
                             respondToRequest();
                         } else {
@@ -91,7 +98,7 @@ public class ClientThread extends Thread {
                                 body.append((char) b);
                             }
                             requestBody = body.toString();
-                            System.out.println("Body parsed: " + body);
+                            LOGGER.fine("Body parsed: " + body);
                             respondToRequest();
                         }
                         endThread();
@@ -104,7 +111,7 @@ public class ClientThread extends Thread {
     }
 
     private void endThread() throws IOException {
-        System.err.println("Thread ended");
+        LOGGER.warning("Thread ended");
         socket.close();
         exit = true;
     }
@@ -196,18 +203,20 @@ public class ClientThread extends Thread {
                 responseDeleteRequest();
                 break;
             default:
-                System.err.println("Method" + method + "not recognized.");
+                LOGGER.warning("Method" + method + "not recognized.");
                 break;
         }
     }
 
     public void responsePostRequest() throws IOException {
+        LOGGER.info("POST Request");
         if (contentLength != null && requestBody != null) {
             try {
                 File file = new File(requestPath);
                 if (file.exists()) {
-                    System.err.println("File already existed");
+                    LOGGER.warning("File already existed");
                 } else {
+                    LOGGER.warning("File does not exist");
                     createNewFile(requestPath, requestBody);
                     sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.toString());
                 }
@@ -226,12 +235,12 @@ public class ClientThread extends Thread {
     }
 
     private void responsePutRequest() throws IOException {
-        System.out.println("PUT Request");
+        LOGGER.info("PUT Request");
         if (contentLength != null && requestBody != null) {
             try {
                 File file = new File(requestPath);
                 if (file.exists()) {
-                    System.out.println("File exist at ");
+                    LOGGER.info("File exist at ");
                     BufferedWriter fileWriter = new BufferedWriter(new FileWriter(WEBROOT + requestPath));
                     fileWriter.write(requestBody);
                     fileWriter.close();
@@ -255,6 +264,7 @@ public class ClientThread extends Thread {
     }
 
     public void responseDeleteRequest() throws IOException {
+        LOGGER.info("DELETE Request");
         try {
             File file;
             int fileLength;
@@ -266,18 +276,18 @@ public class ClientThread extends Thread {
                 try {
                     Files.deleteIfExists(Paths.get(WEBROOT + requestPath));
                 } catch (NoSuchFileException e) {
-                    System.err.println("No such file/directory exists");
+                    LOGGER.info("No such file/directory exists");
                     // If file does not exist
                     // TODO: Review with ErrorHandler
                     sendMessage("HTTP/2.0 " + RESPONSE_CODE.NotFound.toString());
                 } catch (DirectoryNotEmptyException e) {
-                    System.out.println("Directory is not empty.");
+                    LOGGER.warning("Directory is not empty.");
                     sendMessage("HTTP/2.0 " + RESPONSE_CODE.NotModified.toString());
                 } catch (IOException e) {
-                    System.out.println("Invalid permissions.");
+                    LOGGER.warning("Invalid permissions.");
                     sendMessage("HTTP/2.0 " + RESPONSE_CODE.Unauthorized.toString());
                 }
-                System.out.println("Deletion successful.");
+                LOGGER.info("Deletion successful.");
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -285,6 +295,7 @@ public class ClientThread extends Thread {
     }
 
     public void responseGetRequest() throws IOException {
+        LOGGER.info("GET Request");
         try {
             File file;
             int fileLength;
