@@ -113,6 +113,7 @@ public class ClientThread extends Thread {
             case "PUT":
                 break;
             case "HEAD":
+                responseHeadRequest();
                 break;
             case "DELETE":
                 break;
