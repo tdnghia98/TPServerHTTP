@@ -48,7 +48,6 @@ public class ClientThread extends Thread {
     public void run() {
         while (!exit) {
             try {
-
                 String request = socIn.readLine();
                 System.out.println("Client Thread received request: " + request);
                 if (request == null) {
@@ -113,7 +112,7 @@ public class ClientThread extends Thread {
             case "PUT":
                 break;
             case "HEAD":
-                responseHeadRequest();
+                responseHeadRequest(requestPath);
                 break;
             case "DELETE":
                 break;
