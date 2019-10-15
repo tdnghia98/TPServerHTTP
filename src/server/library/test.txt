@@ -1,6 +1,1 @@
-HTTP/1.0 200 OK
-Content-Type: text/html
-Server: Bot
-
-<h1>Hello</h1>
-<h2>Hi</h2>
+sfqsdfq

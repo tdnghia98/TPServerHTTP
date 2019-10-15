@@ -2,6 +2,10 @@ package server.webServer;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Paths;
 import java.sql.SQLOutput;
 import java.util.StringTokenizer;
 
@@ -18,6 +22,7 @@ public class ClientThread extends Thread {
     private final String WEBROOT = "./src/server/library";
     private final String FILE_NOT_FOUND = "404.html";
     private final String HOMEPAGE = "index.html";
+
     enum RESPONSE_CODE {
         OK("200 OK"),
         Created("201 Created"),
@@ -30,6 +35,7 @@ public class ClientThread extends Thread {
         InternalServerError("500 Internal Sever Error");
 
         private String desc;
+
         RESPONSE_CODE(String desc) {
             this.desc = desc;
         }
@@ -38,6 +44,7 @@ public class ClientThread extends Thread {
             return desc;
         }
     }
+
     public ClientThread(Socket s) throws IOException {
         this.socket = s;
         exit = false;
@@ -45,6 +52,7 @@ public class ClientThread extends Thread {
         socOut = new DataOutputStream(socket.getOutputStream());
     }
 
+    // Thread
     public void run() {
         while (!exit) {
             try {
@@ -101,38 +109,7 @@ public class ClientThread extends Thread {
         exit = true;
     }
 
-    private void respondToRequest() throws IOException {
-        switch (method) {
-            case "GET":
-                responseGetRequest(requestPath);
-                break;
-            case "POST":
-                responsePostRequest();
-                break;
-            case "PUT":
-                break;
-            case "HEAD":
-                responseHeadRequest(requestPath);
-                break;
-            case "DELETE":
-                break;
-            default:
-                System.err.println("Method" + method + "not recognized.");
-                break;
-        }
-    }
-
-    public void responsePostRequest() throws IOException {
-        sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.toString());
-        sendMessage("Content-Type: text/html");
-        sendMessage("Server: Bot");
-        // End of the headers
-        sendMessage();
-        // HTML Page
-        sendMessage("<H1>This is a post Response</H1>");
-        sendMessage("<p>The message body that I received: " + requestBody + "</p>");
-    }
-
+    // Message sender
     public void sendMessage(String message) throws IOException {
         socOut.writeBytes(message);
         socOut.writeBytes("\r\n");
@@ -140,43 +117,6 @@ public class ClientThread extends Thread {
 
     public void sendMessage() throws IOException {
         socOut.writeBytes("\r\n");
-    }
-
-//    public void sendTestMessage() {
-//        socOut.println("HTTP/1.0 200 OK");
-//        socOut.println("Content-Type: text/html");
-//        socOut.println("Server: Bot");
-//        // this blank line signals the end of the headers
-//        socOut.println("");
-//        // Send the HTML page
-//        socOut.println("<H1>Welcome to the Ultra Mini-WebServer</H1>");
-//        socOut.flush();
-//    }
-
-
-    private byte[] readFileInByte(File file, int fileLength) throws IOException {
-        FileInputStream fileIn = null;
-        byte[] fileInByte = new byte[fileLength];
-
-        try {
-            fileIn = new FileInputStream(file);
-            fileIn.read(fileInByte);
-        } finally {
-            if (fileIn != null) {
-                fileIn.close();
-            }
-        }
-        return fileInByte;
-    }
-
-    private String getContentType(String requestContent) {
-        if (requestContent.endsWith(".jpg"))
-            return "image/jpeg";
-        if (requestContent.endsWith(".gif"))
-            return "image/gif";
-        if (requestContent.endsWith(".txt") || requestContent.endsWith(".html"))
-            return "text/html";
-        return null;
     }
 
     public void sendFileNotFoundMessage() throws IOException {
@@ -196,16 +136,163 @@ public class ClientThread extends Thread {
 
     }
 
+//    public void sendTestMessage() {
+//        socOut.println("HTTP/1.0 200 OK");
+//        socOut.println("Content-Type: text/html");
+//        socOut.println("Server: Bot");
+//        // this blank line signals the end of the headers
+//        socOut.println("");
+//        // Send the HTML page
+//        socOut.println("<H1>Welcome to the Ultra Mini-WebServer</H1>");
+//        socOut.flush();
+//    }
 
-    public void responseGetRequest(String requestContent) throws IOException {
+    // File Handler
+    private byte[] readFileInByte(File file, int fileLength) throws IOException {
+        FileInputStream fileIn = null;
+        byte[] fileInByte = new byte[fileLength];
+
+        try {
+            fileIn = new FileInputStream(file);
+            fileIn.read(fileInByte);
+        } finally {
+            if (fileIn != null) {
+                fileIn.close();
+            }
+        }
+        return fileInByte;
+    }
+
+    private void createNewFile(String fileName, String fileContent) throws IOException {
+        Files.write(Paths.get(fileName), fileContent.getBytes());
+    }
+
+    private String getContentType(String requestContent) {
+        if (requestContent.endsWith(".jpg"))
+            return "image/jpeg";
+        if (requestContent.endsWith(".gif"))
+            return "image/gif";
+        if (requestContent.endsWith(".txt") || requestContent.endsWith(".html"))
+            return "text/html";
+        return null;
+    }
+
+    // Response
+    private void respondToRequest() throws IOException {
+        switch (method) {
+            case "GET":
+                responseGetRequest();
+                break;
+            case "POST":
+                responsePostRequest();
+                break;
+            case "PUT":
+                responsePutRequest();
+                break;
+            case "HEAD":
+                responseHeadRequest();
+                break;
+            case "DELETE":
+                responseDeleteRequest();
+                break;
+            default:
+                System.err.println("Method" + method + "not recognized.");
+                break;
+        }
+    }
+
+    public void responsePostRequest() throws IOException {
+        if (contentLength != null && requestBody != null) {
+            try {
+                File file = new File(requestPath);
+                if (file.exists()) {
+                    System.err.println("File already existed");
+                } else {
+                    createNewFile(requestPath, requestBody);
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.toString());
+                }
+            } catch (IOException ex) {
+                // TODO: Handle PUT Exception
+                ex.printStackTrace();
+            }
+            // Response code
+
+            // Content type
+
+            // Content length
+
+            sendMessage();  // blank line between headers and content, very important
+        }
+    }
+
+    private void responsePutRequest() throws IOException {
+        System.out.println("PUT Request");
+        if (contentLength != null && requestBody != null) {
+            try {
+                File file = new File(requestPath);
+                if (file.exists()) {
+                    System.out.println("File exist at ");
+                    BufferedWriter fileWriter = new BufferedWriter(new FileWriter(WEBROOT + requestPath));
+                    fileWriter.write(requestBody);
+                    fileWriter.close();
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.toString());
+                } else {
+                    createNewFile(requestPath, requestBody);
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.toString());
+                }
+            } catch (IOException ex) {
+                // TODO: Handle PUT Exception
+                ex.printStackTrace();
+            }
+            // Response code
+
+            // Content type
+
+            // Content length
+
+            sendMessage();  // blank line between headers and content, very important
+        }
+    }
+
+    public void responseDeleteRequest() throws IOException {
         try {
             File file;
             int fileLength;
-            String contentType = getContentType(requestContent);
-            if (requestContent.equals("/")) {
+            if (requestPath.equals("/")) {
+                // Trying to delete index.html file
+                // TODO: Review with ErrorHandler
+                sendMessage("HTTP/2.0 " + RESPONSE_CODE.Unauthorized.toString());
+            } else {
+                try {
+                    Files.deleteIfExists(Paths.get(WEBROOT + requestPath));
+                } catch (NoSuchFileException e) {
+                    System.err.println("No such file/directory exists");
+                    // If file does not exist
+                    // TODO: Review with ErrorHandler
+                    sendMessage("HTTP/2.0 " + RESPONSE_CODE.NotFound.toString());
+                } catch (DirectoryNotEmptyException e) {
+                    System.out.println("Directory is not empty.");
+                    sendMessage("HTTP/2.0 " + RESPONSE_CODE.NotModified.toString());
+                } catch (IOException e) {
+                    System.out.println("Invalid permissions.");
+                    sendMessage("HTTP/2.0 " + RESPONSE_CODE.Unauthorized.toString());
+                }
+                System.out.println("Deletion successful.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void responseGetRequest() throws IOException {
+        try {
+            File file;
+            int fileLength;
+            String contentType = getContentType(requestPath);
+            if (requestPath.equals("/")) {
                 file = new File(WEBROOT, HOMEPAGE);
             } else {
-                file = new File(WEBROOT, requestContent);
+                file = new File(WEBROOT, requestPath);
             }
             fileLength = (int) file.length();
             byte[] fileInBytes = readFileInByte(file, fileLength);
@@ -232,16 +319,15 @@ public class ClientThread extends Thread {
         }
     }
 
-    public void responseHeadRequest(String requestContent) {
-
+    public void responseHeadRequest() {
         try {
             File file;
             int fileLength;
-            String contentType = getContentType(requestContent);
-            if (requestContent.equals("/")) {
+            String contentType = getContentType(requestPath);
+            if (requestPath.equals("/")) {
                 file = new File(WEBROOT, HOMEPAGE);
             } else {
-                file = new File(WEBROOT, requestContent);
+                file = new File(WEBROOT, requestPath);
             }
             fileLength = (int) file.length();
 
