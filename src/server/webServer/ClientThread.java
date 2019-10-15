@@ -6,7 +6,6 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
-import java.sql.SQLOutput;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,9 +37,8 @@ public class ClientThread extends Thread {
         InternalServerError("500 Internal Sever Error", "500.html");
 
         private String desc;
-
-        RESPONSE_CODE(String desc) {
         private String path;
+
         RESPONSE_CODE(String desc, String path) {
             this.desc = desc;
             this.path = path;
@@ -130,22 +128,22 @@ public class ClientThread extends Thread {
         socOut.writeBytes("\r\n");
     }
 
-    public void sendFileNotFoundMessage() throws IOException {
-        System.out.println("Sending 404 page");
-        File file = new File(WEBROOT, FILE_NOT_FOUND);
-        int fileLength = (int) file.length();
-        String content = "text/html";
-        byte[] fileInByte = readFileInByte(file, fileLength);
-
-        sendMessage("HTTP/1.1");
-        sendMessage("Content-type: " + content);
-        sendMessage("Content-length: " + fileLength);
-        sendMessage(); // blank line between headers and content, very important !
-        socOut.flush(); // flush character output stream buffer
-
-        socOut.write(fileInByte, 0, fileLength);
-
-    }
+//    public void sendFileNotFoundMessage() throws IOException {
+//        System.out.println("Sending 404 page");
+//        File file = new File(WEBROOT, FILE_NOT_FOUND);
+//        int fileLength = (int) file.length();
+//        String content = "text/html";
+//        byte[] fileInByte = readFileInByte(file, fileLength);
+//
+//        sendMessage("HTTP/1.1");
+//        sendMessage("Content-type: " + content);
+//        sendMessage("Content-length: " + fileLength);
+//        sendMessage(); // blank line between headers and content, very important !
+//        socOut.flush(); // flush character output stream buffer
+//
+//        socOut.write(fileInByte, 0, fileLength);
+//
+//    }
 
 //    public void sendTestMessage() {
 //        socOut.println("HTTP/1.0 200 OK");
@@ -175,7 +173,14 @@ public class ClientThread extends Thread {
     }
 
     private void createNewFile(String fileName, String fileContent) throws IOException {
-        Files.write(Paths.get(fileName), fileContent.getBytes());
+        LOGGER.info("Creating new file");
+        Files.write(Paths.get(WEBROOT, fileName), fileContent.getBytes());
+        File file = new File(WEBROOT, fileName);
+        if (file.exists()) {
+            LOGGER.info("File created at " + Paths.get(WEBROOT, fileName));
+        } else {
+            LOGGER.info("File not created");
+        }
     }
 
     private String getContentType(String requestContent) {
@@ -236,18 +241,15 @@ public class ClientThread extends Thread {
             try {
                 File file = new File(WEBROOT, requestPath);
                 if (file.exists()) {
-                    LOGGER.warning("File already existed");
+                    LOGGER.warning("File exists at " + WEBROOT + requestPath);
                 } else {
-                    LOGGER.warning("File does not exist");
                     createNewFile(requestPath, requestBody);
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.toString());
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.getMes());
                 }
             } catch (IOException ex) {
                 // TODO: Handle PUT Exception
                 ex.printStackTrace();
             }
-            // Response code
-
             // Content type
 
             // Content length
@@ -260,16 +262,16 @@ public class ClientThread extends Thread {
         LOGGER.info("PUT Request");
         if (contentLength != null && requestBody != null) {
             try {
-                File file = new File(requestPath);
+                File file = new File(WEBROOT, requestPath);
                 if (file.exists()) {
                     LOGGER.info("File exist at " + requestPath);
                     BufferedWriter fileWriter = new BufferedWriter(new FileWriter(WEBROOT + requestPath));
                     fileWriter.write(requestBody);
                     fileWriter.close();
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.toString());
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.getMes());
                 } else {
                     createNewFile(requestPath, requestBody);
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.toString());
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.getMes());
                 }
             } catch (IOException ex) {
                 // TODO: Handle PUT Exception
@@ -288,29 +290,28 @@ public class ClientThread extends Thread {
     public void responseDeleteRequest() throws IOException {
         LOGGER.info("DELETE Request");
         try {
-            File file;
-            int fileLength;
             if (requestPath.equals("/")) {
                 // Trying to delete index.html file
                 // TODO: Review with ErrorHandler
-                sendMessage("HTTP/2.0 " + RESPONSE_CODE.Unauthorized.toString());
+                sendMessage("HTTP/1.1 " + RESPONSE_CODE.Unauthorized.getMes());
             } else {
                 try {
-                    Files.deleteIfExists(Paths.get(WEBROOT + requestPath));
+                    Files.deleteIfExists(Paths.get(WEBROOT, requestPath));
                 } catch (NoSuchFileException e) {
                     LOGGER.info("No such file/directory exists");
                     // If file does not exist
                     // TODO: Review with ErrorHandler
-                    sendMessage("HTTP/2.0 " + RESPONSE_CODE.NotFound.toString());
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotFound.getMes());
                 } catch (DirectoryNotEmptyException e) {
                     LOGGER.warning("Directory is not empty.");
-                    sendMessage("HTTP/2.0 " + RESPONSE_CODE.NotModified.toString());
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotModified.getMes());
                 } catch (IOException e) {
                     LOGGER.warning("Invalid permissions.");
-                    sendMessage("HTTP/2.0 " + RESPONSE_CODE.Unauthorized.toString());
+                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Unauthorized.getMes());
                 }
                 LOGGER.info("Deletion successful.");
             }
+            sendMessage();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -331,7 +332,7 @@ public class ClientThread extends Thread {
             byte[] fileInBytes = readFileInByte(file, fileLength);
 
             // Response code
-            sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.toString());
+            sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.getMes());
 
             // Content type
             sendMessage("Content-Type: " + contentType);
@@ -347,7 +348,7 @@ public class ClientThread extends Thread {
         }
     }
 
-    public void responseHeadRequest() {
+    public void responseHeadRequest() throws IOException {
         try {
             File file;
             int fileLength;
@@ -360,7 +361,7 @@ public class ClientThread extends Thread {
             fileLength = (int) file.length();
 
             // Response code
-            sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.toString());
+            sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.getMes());
 
             // Content type
             sendMessage("Content-Type: " + contentType);
@@ -369,6 +370,8 @@ public class ClientThread extends Thread {
             sendMessage();
         } catch (FileNotFoundException ex) {
             errorCodeHandler(ex);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
