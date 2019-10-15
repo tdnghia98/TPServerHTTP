@@ -56,7 +56,7 @@ public class ClientThread extends Thread {
         socOut = new DataOutputStream(socket.getOutputStream());
 
         // Logging
-        LOGGER.setLevel(Level.ALL);
+        LOGGER.setLevel(Level.INFO);
     }
 
     // Thread
@@ -212,7 +212,7 @@ public class ClientThread extends Thread {
         LOGGER.info("POST Request");
         if (contentLength != null && requestBody != null) {
             try {
-                File file = new File(requestPath);
+                File file = new File(WEBROOT, requestPath);
                 if (file.exists()) {
                     LOGGER.warning("File already existed");
                 } else {
@@ -240,7 +240,7 @@ public class ClientThread extends Thread {
             try {
                 File file = new File(requestPath);
                 if (file.exists()) {
-                    LOGGER.info("File exist at ");
+                    LOGGER.info("File exist at " + requestPath);
                     BufferedWriter fileWriter = new BufferedWriter(new FileWriter(WEBROOT + requestPath));
                     fileWriter.write(requestBody);
                     fileWriter.close();
