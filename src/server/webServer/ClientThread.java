@@ -2,7 +2,6 @@ package server.webServer;
 
 import java.io.*;
 import java.net.Socket;
-import java.sql.SQLOutput;
 import java.util.StringTokenizer;
 
 public class ClientThread extends Thread {
@@ -213,17 +212,12 @@ public class ClientThread extends Thread {
             // Body
             socOut.write(fileInBytes, 0, fileInBytes.length);
         } catch (FileNotFoundException ex) {
-            try {
-                errorCodeHandler(ex);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (IOException ex) {
             ex.printStackTrace();
+            errorCodeHandler(ex);
         }
     }
 
-    public void responseHeadRequest(String requestContent) {
+    public void responseHeadRequest(String requestContent) throws IOException {
 
         try {
             File file;
@@ -245,13 +239,7 @@ public class ClientThread extends Thread {
             sendMessage("Content-Length: " + fileLength);
             sendMessage();
         } catch (FileNotFoundException ex) {
-            try {
-                errorCodeHandler(ex);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (IOException ex) {
-            ex.printStackTrace();
+            errorCodeHandler(ex);
         }
     }
 
