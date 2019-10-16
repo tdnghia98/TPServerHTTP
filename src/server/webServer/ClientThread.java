@@ -162,8 +162,10 @@ public class ClientThread extends Thread {
             return "image/gif";
         if (requestContent.endsWith(".txt") || requestContent.endsWith(".html"))
             return "text/html";
-        if (requestContent.endsWith(".mp3") || requestContent.endsWith(".mp4"))
+        if (requestContent.endsWith(".mp4"))
             return "video/mp4";
+        if (requestContent.endsWith(".mp3"))
+            return "audio/mp3";
         return null;
     }
 
@@ -257,8 +259,6 @@ public class ClientThread extends Thread {
         LOGGER.info("DELETE Request");
         try {
             if (requestPath.equals("/")) {
-                // Trying to delete index.html file
-                // TODO: Review with ErrorHandler
                 sendHtmlByResponseCode(RESPONSE_CODE.Forbidden);
             } else {
                 try {
@@ -270,8 +270,6 @@ public class ClientThread extends Thread {
 
                 } catch (NoSuchFileException e) {
                     LOGGER.info("No such file/directory exists");
-                    // If file does not exist
-                    // TODO: Review with ErrorHandler
                     sendHtmlByResponseCode(RESPONSE_CODE.NotFound);
                 } catch (DirectoryNotEmptyException e) {
                     LOGGER.warning("Directory is not empty.");
