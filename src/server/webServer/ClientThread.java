@@ -26,9 +26,9 @@ public class ClientThread extends Thread {
     private static Logger LOGGER = Logger.getLogger(ClientThread.class.getName());
 
     enum RESPONSE_CODE {
-        OK("200 OK",""),
+        OK("200 OK","200.html"),
         Created("201 Created", "201.html"),
-        NoContent("204 No Content", ""),
+        NoContent("204 No Content", "204.html"),
         NotModified("304 Not Modified", ""),
         BadRequest("400 Bad Request", "400.html"),
         Forbidden("403 Forbidden", "403.html"),
@@ -209,6 +209,7 @@ public class ClientThread extends Thread {
 
     public void responsePostRequest() throws IOException {
         LOGGER.info("POST Request");
+
         if (contentLength != null && requestBody != null) {
             try {
                 File file = new File(WEBROOT, requestPath);
@@ -256,27 +257,32 @@ public class ClientThread extends Thread {
             if (requestPath.equals("/")) {
                 // Trying to delete index.html file
                 // TODO: Review with ErrorHandler
-                sendMessage("HTTP/1.1 " + RESPONSE_CODE.Unauthorized.getMes());
+                sendHtmlByResponseCode(RESPONSE_CODE.Forbidden);
             } else {
                 try {
-                    Files.deleteIfExists(Paths.get(WEBROOT, requestPath));
+                    if (Files.deleteIfExists(Paths.get(WEBROOT, requestPath))) {
+                        sendHtmlByResponseCode(RESPONSE_CODE.OK);
+                    } else {
+                        sendHtmlByResponseCode(RESPONSE_CODE.NotFound);
+                    }
+
                 } catch (NoSuchFileException e) {
                     LOGGER.info("No such file/directory exists");
                     // If file does not exist
                     // TODO: Review with ErrorHandler
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotFound.getMes());
+                    sendHtmlByResponseCode(RESPONSE_CODE.NotFound);
                 } catch (DirectoryNotEmptyException e) {
                     LOGGER.warning("Directory is not empty.");
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotModified.getMes());
+                    sendHtmlByResponseCode(RESPONSE_CODE.NoContent);
                 } catch (IOException e) {
                     LOGGER.warning("Invalid permissions.");
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Unauthorized.getMes());
+                    errorCodeHandler(e);
                 }
                 LOGGER.info("Deletion successful.");
             }
-            sendMessage();
         } catch (IOException e) {
             e.printStackTrace();
+            errorCodeHandler(e);
         }
     }
 
