@@ -128,34 +128,6 @@ public class ClientThread extends Thread {
         socOut.writeBytes("\r\n");
     }
 
-//    public void sendFileNotFoundMessage() throws IOException {
-//        System.out.println("Sending 404 page");
-//        File file = new File(WEBROOT, FILE_NOT_FOUND);
-//        int fileLength = (int) file.length();
-//        String content = "text/html";
-//        byte[] fileInByte = readFileInByte(file, fileLength);
-//
-//        sendMessage("HTTP/1.1");
-//        sendMessage("Content-type: " + content);
-//        sendMessage("Content-length: " + fileLength);
-//        sendMessage(); // blank line between headers and content, very important !
-//        socOut.flush(); // flush character output stream buffer
-//
-//        socOut.write(fileInByte, 0, fileLength);
-//
-//    }
-
-//    public void sendTestMessage() {
-//        socOut.println("HTTP/1.0 200 OK");
-//        socOut.println("Content-Type: text/html");
-//        socOut.println("Server: Bot");
-//        // this blank line signals the end of the headers
-//        socOut.println("");
-//        // Send the HTML page
-//        socOut.println("<H1>Welcome to the Ultra Mini-WebServer</H1>");
-//        socOut.flush();
-//    }
-
     // File Handler
     private byte[] readFileInByte(File file, int fileLength) throws IOException {
         FileInputStream fileIn = null;
@@ -242,22 +214,15 @@ public class ClientThread extends Thread {
                 File file = new File(WEBROOT, requestPath);
                 if (file.exists()) {
                     LOGGER.warning("File exists at " + WEBROOT + requestPath);
-
+                    sendHtmlByResponseCode(RESPONSE_CODE.BadRequest);
                 } else {
                     createNewFile(requestPath, requestBody);
                     sendHtmlByResponseCode(RESPONSE_CODE.Created);
                 }
             } catch (IOException ex) {
-                // TODO: Handle PUT Exception
                 ex.printStackTrace();
+                errorCodeHandler(ex);
             }
-            // Content type
-
-            // Content length
-
-//            sendMessage();  // blank line between headers and content, very important
-
-//            socOut.flush();
         }
     }
 
@@ -267,24 +232,19 @@ public class ClientThread extends Thread {
             try {
                 File file = new File(WEBROOT, requestPath);
                 if (file.exists()) {
-                    LOGGER.info("File exist at " + requestPath);
+                    LOGGER.info("File exists at " + requestPath);
                     BufferedWriter fileWriter = new BufferedWriter(new FileWriter(WEBROOT + requestPath));
                     fileWriter.write(requestBody);
                     fileWriter.close();
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.OK.getMes());
+                    sendHtmlByResponseCode(RESPONSE_CODE.OK);
                 } else {
                     createNewFile(requestPath, requestBody);
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.getMes());
+                    sendHtmlByResponseCode(RESPONSE_CODE.Created);
                 }
             } catch (IOException ex) {
-                // TODO: Handle PUT Exception
                 ex.printStackTrace();
+                errorCodeHandler(ex);
             }
-            // Response code
-
-            // Content type
-
-            // Content length
 
             sendMessage();  // blank line between headers and content, very important
         }
@@ -381,16 +341,17 @@ public class ClientThread extends Thread {
     private void errorCodeHandler (Exception ex) throws IOException {
         String mes = ex.getMessage();
         if (mes.matches("(.*)Access is denied(.*)")) {
-            sendMessage("HTTP/1.1 " + RESPONSE_CODE.Forbidden.getMes());
             sendHtmlByResponseCode(RESPONSE_CODE.Forbidden);
             return;
         }
         if (mes.matches("(.*)The system cannot find the file specified(.*)")) {
-            sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotFound.getMes());
             sendHtmlByResponseCode(RESPONSE_CODE.NotFound);
             return;
         }
-        sendMessage("HTTP/1.1 " + RESPONSE_CODE.InternalServerError.getMes());
+        if(mes.matches("(.*)File exists(.*)")) {
+            sendHtmlByResponseCode(RESPONSE_CODE.BadRequest);
+            return;
+        }
         sendHtmlByResponseCode(RESPONSE_CODE.InternalServerError);
     }
 }
