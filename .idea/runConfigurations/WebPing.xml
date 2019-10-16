@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="WebPing" type="Application" factoryName="Application">
-    <option name="MAIN_CLASS_NAME" value="WebPingGUI" />
+    <option name="MAIN_CLASS_NAME" value="client.WebPingGUI" />
     <module name="TPServerHTTP" />
     <option name="PROGRAM_PARAMETERS" value="localhost 3000" />
     <method v="2">
