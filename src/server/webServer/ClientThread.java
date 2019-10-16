@@ -27,7 +27,7 @@ public class ClientThread extends Thread {
 
     enum RESPONSE_CODE {
         OK("200 OK",""),
-        Created("201 Created", ""),
+        Created("201 Created", "201.html"),
         NoContent("204 No Content", ""),
         NotModified("304 Not Modified", ""),
         BadRequest("400 Bad Request", "400.html"),
@@ -214,19 +214,19 @@ public class ClientThread extends Thread {
             default:
                 LOGGER.warning("Method" + method + "not recognized.");
                 sendMessage("HTTP/1.1 " + RESPONSE_CODE.InternalServerError.getMes());
-                sendErrorMes(RESPONSE_CODE.InternalServerError);
+                sendHtmlByResponseCode(RESPONSE_CODE.InternalServerError);
                 break;
 
         }
     }
 
-        public void sendErrorMes(RESPONSE_CODE res) throws IOException {
+        public void sendHtmlByResponseCode(RESPONSE_CODE res) throws IOException {
             File file = new File(WEBROOT, res.getPath());
             int fileLength = (int) file.length();
             String content = "text/html";
             byte[] fileInByte = readFileInByte(file, fileLength);
 
-            sendMessage("HTTP/1.1");
+            sendMessage("HTTP/1.1 " + res.getMes());
             sendMessage("Content-type: " + content);
             sendMessage("Content-length: " + fileLength);
             sendMessage(); // blank line between headers and content, very important !
@@ -242,9 +242,10 @@ public class ClientThread extends Thread {
                 File file = new File(WEBROOT, requestPath);
                 if (file.exists()) {
                     LOGGER.warning("File exists at " + WEBROOT + requestPath);
+
                 } else {
                     createNewFile(requestPath, requestBody);
-                    sendMessage("HTTP/1.1 " + RESPONSE_CODE.Created.getMes());
+                    sendHtmlByResponseCode(RESPONSE_CODE.Created);
                 }
             } catch (IOException ex) {
                 // TODO: Handle PUT Exception
@@ -254,7 +255,9 @@ public class ClientThread extends Thread {
 
             // Content length
 
-            sendMessage();  // blank line between headers and content, very important
+//            sendMessage();  // blank line between headers and content, very important
+
+//            socOut.flush();
         }
     }
 
@@ -379,15 +382,15 @@ public class ClientThread extends Thread {
         String mes = ex.getMessage();
         if (mes.matches("(.*)Access is denied(.*)")) {
             sendMessage("HTTP/1.1 " + RESPONSE_CODE.Forbidden.getMes());
-            sendErrorMes(RESPONSE_CODE.Forbidden);
+            sendHtmlByResponseCode(RESPONSE_CODE.Forbidden);
             return;
         }
         if (mes.matches("(.*)The system cannot find the file specified(.*)")) {
             sendMessage("HTTP/1.1 " + RESPONSE_CODE.NotFound.getMes());
-            sendErrorMes(RESPONSE_CODE.NotFound);
+            sendHtmlByResponseCode(RESPONSE_CODE.NotFound);
             return;
         }
         sendMessage("HTTP/1.1 " + RESPONSE_CODE.InternalServerError.getMes());
-        sendErrorMes(RESPONSE_CODE.InternalServerError);
+        sendHtmlByResponseCode(RESPONSE_CODE.InternalServerError);
     }
 }
