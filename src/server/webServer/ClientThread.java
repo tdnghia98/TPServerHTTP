@@ -162,6 +162,8 @@ public class ClientThread extends Thread {
             return "image/gif";
         if (requestContent.endsWith(".txt") || requestContent.endsWith(".html"))
             return "text/html";
+        if (requestContent.endsWith(".mp3") || requestContent.endsWith(".mp4"))
+            return "video/mp4";
         return null;
     }
 
